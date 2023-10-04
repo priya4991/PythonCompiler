@@ -171,7 +171,7 @@ vector<Instruction> parse(vector<Token> &tokens)
                     throw invalid_argument("Invalid argument");
                 }
                 /// load instructions
-                instructions.push_back({OpCode::LOAD_FAST, identifierQueue.back()});
+                instructions.push_back({OpCode::LOAD_FAST, lastVariable});
                 instructions.push_back({OpCode::LOAD_FAST, token.value});
                 if (operandStack.top() == "+")
                 {
@@ -208,13 +208,30 @@ vector<Instruction> parse(vector<Token> &tokens)
     return instructions;
 }
 
+int generateCode(vector<Instruction> instructions) {
+    vector<int> s;
+    for (const Instruction &ins : instructions) {
+        if (ins.opcode == OpCode::LOAD_CONST) {
+            s.push_back(stoi(ins.operand));
+        } else if (ins.opcode == OpCode::BINARY_ADD) {
+            int sum = 0;
+            for (auto const &it : s) {
+                sum += it; 
+            }
+            s.clear();
+            s.push_back(sum);
+        }
+    }
+    return s.back();
+}
+
 int main()
 {
     string input =
         "def s():\n"
-        "\tab = 1\n"
+        "\ta = 1\n"
         "\tb = 12\n"
-        "\tprint(ab + b)\n";
+        "\tprint(a + b)\n";
 
     vector<Token> tokens = tokenize(input);
     // note 5
@@ -269,8 +286,13 @@ int main()
                 break;
             case OpCode::BINARY_ADD:
                 cout << "BINARY_ADD " << endl;
+            default:
+                cout << endl;
             }
         }
+
+        int res = generateCode(instructions);
+        cout << "Final result = " << res;
     }
     catch (invalid_argument &e)
     {
