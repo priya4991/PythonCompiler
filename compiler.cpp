@@ -152,7 +152,7 @@ vector<Instruction> parse(vector<Token> &tokens)
     {
         if (token.type == TokenType::IDENTIFIER)
         {
-            if (operandStack.empty() && keywordStack.empty())
+            if (keywordStack.empty())
             {
                 identifierQueue.push_back(token.value);
             }
@@ -163,17 +163,16 @@ vector<Instruction> parse(vector<Token> &tokens)
             else
             {
                 // check if variables are valid or not
-                string lastVariable = identifierQueue.back();
-                identifierQueue.pop_back();
-                if ((find(identifierQueue.begin(), identifierQueue.end(), lastVariable) == identifierQueue.end()) ||
-                    find(identifierQueue.begin(), identifierQueue.end(), token.value) == identifierQueue.end())
+                // string lastVariable = identifierQueue.back();
+                // identifierQueue.pop_back();
+                if (find(identifierQueue.begin(), identifierQueue.end(), token.value) == identifierQueue.end())
                 {
                     throw invalid_argument("Invalid argument");
                 }
                 /// load instructions
-                instructions.push_back({OpCode::LOAD_FAST, lastVariable});
+                // instructions.push_back({OpCode::LOAD_FAST, lastVariable});
                 instructions.push_back({OpCode::LOAD_FAST, token.value});
-                if (operandStack.top() == "+")
+                if (!operandStack.empty() && operandStack.top() == "+")
                 {
                     instructions.push_back({OpCode::BINARY_ADD, ""});
                     operandStack.pop();
@@ -198,6 +197,7 @@ vector<Instruction> parse(vector<Token> &tokens)
             if (token.value == "print")
             {
                 instructions.push_back({OpCode::LOAD_GLOBAL, "print"});
+                keywordStack.push("print");
             }
             else if (token.value == "def")
             {
@@ -208,21 +208,42 @@ vector<Instruction> parse(vector<Token> &tokens)
     return instructions;
 }
 
-int generateCode(vector<Instruction> instructions) {
+int generateCode(vector<Instruction> instructions)
+{
+    vector<string> vars;
     vector<int> s;
-    for (const Instruction &ins : instructions) {
-        if (ins.opcode == OpCode::LOAD_CONST) {
+    vector<int> result;
+    for (const Instruction &ins : instructions)
+    {
+        if (ins.opcode == OpCode::LOAD_CONST)
+        {
             s.push_back(stoi(ins.operand));
-        } else if (ins.opcode == OpCode::BINARY_ADD) {
+        }
+        else if (ins.opcode == OpCode::BINARY_ADD)
+        {
             int sum = 0;
-            for (auto const &it : s) {
-                sum += it; 
+            for (auto const &it : result)
+            {
+                sum += it;
             }
-            s.clear();
-            s.push_back(sum);
+            result.clear();
+            result.push_back(sum);
+        }
+        else if (ins.opcode == OpCode::STORE_FAST)
+        {
+            vars.push_back(ins.operand);
+        }
+        else if (ins.opcode == OpCode::LOAD_FAST)
+        {
+            auto it = find(vars.begin(), vars.end(), ins.operand);
+            if (it != vars.end())
+            {
+                int index = it - vars.begin();
+                result.push_back(s.at(index));
+            }
         }
     }
-    return s.back();
+    return result.back();
 }
 
 int main()
@@ -231,7 +252,8 @@ int main()
         "def s():\n"
         "\ta = 1\n"
         "\tb = 12\n"
-        "\tprint(a + b)\n";
+        "\tc = 1\n"
+        "\tprint(a + c + b)\n";
 
     vector<Token> tokens = tokenize(input);
     // note 5
@@ -286,6 +308,7 @@ int main()
                 break;
             case OpCode::BINARY_ADD:
                 cout << "BINARY_ADD " << endl;
+                break;
             default:
                 cout << endl;
             }
